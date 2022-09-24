@@ -3,7 +3,7 @@ use crate::sudoku::{Number, Sudoku};
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
 use anyhow::anyhow;
-use sdl2::event::Event;
+use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::MouseButton;
 
@@ -18,8 +18,15 @@ pub struct SdlContext {
 pub enum Action {
     Quit,
     Select { row: usize, col: usize },
-    Insert { number: u8 }
+    MoveSelection { dir: Direction },
+    Insert { number: u8 },
+    Delete,
+    Redraw
 }
+
+#[derive(Clone, Copy)]
+pub enum Direction { Up, Down, Left, Right }
+
 pub fn initialize_sdl() -> Result<SdlContext, anyhow::Error> {
     let sdl_context = sdl2::init().map_err(|e| anyhow!(e))?;
     let video_subsystem = sdl_context.video().map_err(|e| anyhow!(e))?;
@@ -47,8 +54,8 @@ pub fn initialize_sdl() -> Result<SdlContext, anyhow::Error> {
 pub fn check_input(event_pump: &mut sdl2::EventPump, width: usize, length: usize) -> Option<Action> {
     for event in event_pump.poll_iter() {
         match event {
-            Event::Quit { .. } |
-            Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+            Event::Quit { .. }
+            | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                 return Some(Action::Quit)
             }
             Event::MouseButtonDown {mouse_btn: MouseButton::Left, x, y, .. } => {
@@ -57,8 +64,15 @@ pub fn check_input(event_pump: &mut sdl2::EventPump, width: usize, length: usize
                     col: y as usize * 9 / length
                 })
             }
+            Event::KeyDown { keycode: Some(Keycode::Delete), .. } => {
+                return Some(Action::Delete)
+            }
             Event::KeyDown { keycode: Some(key), .. } => {
                 return check_input_numbers(&key)
+                    .or(check_input_cursor(&key))
+            }
+            Event::Window { win_event: event, .. } => {
+                return check_input_window_event(&event)
             }
             _ => {}
         }
@@ -92,6 +106,29 @@ fn check_input_numbers(key_pressed: &Keycode) -> Option<Action> {
     keys.get(key_pressed).map(|n| Action::Insert { number: *n })
 }
 
+fn check_input_cursor(key_pressed: &Keycode) -> Option<Action> {
+    let keys: HashMap<_, _> = HashMap::from([
+        (Keycode::Up, Direction::Up),
+        (Keycode::Down, Direction::Down),
+        (Keycode::Right, Direction::Right),
+        (Keycode::Left, Direction::Left)
+    ]);
+
+    keys.get(key_pressed).map(|dir| Action::MoveSelection { dir: *dir })
+}
+
+fn check_input_window_event(event: &WindowEvent) -> Option<Action> {
+    match event {
+        WindowEvent::Shown
+        | WindowEvent::Exposed
+        | WindowEvent::Maximized
+        | WindowEvent::Restored
+        | WindowEvent:: Enter
+        | WindowEvent:: FocusGained
+        | WindowEvent:: TakeFocus => Some(Action::Redraw),
+        _ => None
+    }
+}
 
 pub fn render_window(
     sdl: &mut SdlContext,

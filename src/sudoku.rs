@@ -6,17 +6,10 @@ use std::io::BufReader;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("I/O Error")]
-    Io(#[source] std::io::Error),
+    Io(#[from] std::io::Error),
     #[error("Created grid has an invalid size. rows: {rows:?}, columns: {cols:?}")]
     MismatchedGrid { rows: usize, cols: usize }
 }
-
-impl From<std::io::Error> for Error {
-    fn from(other: std::io::Error) -> Self {
-        Error::Io(other)
-    }
-}
-
 
 #[derive(Clone)]
 pub enum Number {
@@ -68,6 +61,15 @@ impl Sudoku {
             match val {
                 Number::Empty | Number::Answer(..) => { *val = Number::Answer(answer); }
                 Number::Given(..) => {}
+            }
+        }
+    }
+
+    pub fn delete_number(&mut self, row: usize, col: usize) {
+        if let Some(val) = self.rows[row].get_mut(col) {
+            match val {
+                Number::Answer(..) => { *val = Number::Empty; }
+                _ => {}
             }
         }
     }
