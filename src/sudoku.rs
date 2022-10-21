@@ -11,12 +11,13 @@ pub enum Error {
     MismatchedGrid { rows: usize, cols: usize }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Number {
     Empty,
     Given(u8),
     Answer(u8)
 }
+
 pub struct Sudoku {
     rows: Vec<Vec<Number>>
 }
@@ -49,11 +50,8 @@ impl Sudoku {
                 );
             }
         }
-        
-        let sudoku = Sudoku { rows };
 
-
-        Ok(sudoku)
+        Ok(Sudoku { rows } )
     }
 
     pub fn insert_number(&mut self, row: usize, col: usize, answer: u8) {
@@ -74,8 +72,8 @@ impl Sudoku {
         }
     }
 
-    pub fn check_position(&self, row: usize, col: usize) -> &Number {
-        &self.rows[row][col]
+    pub fn check_position(&self, row: usize, col: usize) -> Option<&Number> {
+        self.rows.get(row).map(|c| c.get(col)).flatten()
     }
 
     pub fn iterate(&self) -> SudokuIter {
@@ -84,14 +82,14 @@ impl Sudoku {
 }
 
 pub struct SudokuIter<'a> {
-    sudoku: &'a Vec<Vec<Number>>,
+    rows: &'a Vec<Vec<Number>>,
     i: usize,
     j: usize
 }
 
 impl<'a> SudokuIter<'a> {
-    fn new(sudoku: &Vec<Vec<Number>>) -> SudokuIter {
-        SudokuIter { sudoku, i: 0, j: 0 }
+    fn new(rows: &Vec<Vec<Number>>) -> SudokuIter {
+       SudokuIter { rows, i: 0, j: 0 }
     }
 }
 
@@ -99,7 +97,7 @@ impl<'a> Iterator for SudokuIter<'a> {
     type Item = (usize, usize, &'a Number);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(row) = self.sudoku.get(self.i) {
+        if let Some(row) = self.rows.get(self.i) {
             if let Some(val) = row.get(self.j) {
                 self.j += 1;
 
@@ -115,3 +113,42 @@ impl<'a> Iterator for SudokuIter<'a> {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_file() -> Result<(), anyhow::Error> {
+        let path = std::path::Path::new("tests/example");
+        let sudoku = Sudoku::from_file(path)?;
+
+        assert_eq!(sudoku.check_position(0, 3), Some(&Number::Given(3)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn insert_number() -> Result<(), anyhow::Error> {
+        let mut sudoku = Sudoku::new(9);
+
+        sudoku.insert_number(0, 0, 9);
+
+        assert_eq!(sudoku.check_position(0, 0), Some(&Number::Answer(9)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_position() -> Result<(), anyhow::Error> {
+        let mut sudoku = Sudoku::new(9);
+
+        sudoku.insert_number(2, 3, 5);
+
+        assert_eq!(sudoku.check_position(2, 3), Some(&sudoku.rows[2][3]));
+
+        Ok(())
+    }
+}
+

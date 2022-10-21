@@ -10,7 +10,7 @@ pub fn run() -> Result<(), anyhow::Error> {
 
     let mut game_context = interface::initialize_sdl()?;
 
-    let mut sudoku = Sudoku::from_file(std::path::Path::new("example"))?;
+    let mut sudoku = Sudoku::from_file(std::path::Path::new("tests/example"))?;
 
     let time_per_frame = Duration::new(1, 0) / 60;
 
@@ -35,23 +35,16 @@ pub fn run() -> Result<(), anyhow::Error> {
                 redraw = true;
             }
             Some(Action::MoveSelection { dir } ) => {
-                if let Some((row, col)) = selection {
-                    selection = match dir {
-                        Direction::Up => Some((row, col.saturating_sub(1))),
-                        Direction::Down => Some((row, col + 1)),
-                        Direction::Left => Some((row.saturating_sub(1), col)),
-                        Direction::Right => Some((row + 1, col))
-                    };
+                selection = move_selection(selection, dir);
 
-                    redraw = true;
-                }
+                redraw = true;
             }
             Some(Action::Insert { number } ) => {
                 // if there is something selected
                 if let Some((row, col)) = selection {
                     // if it's not a given number
                     match sudoku.check_position(row, col) {
-                        Number::Empty | Number::Answer(_) => {
+                        Some(Number::Empty | Number::Answer(_)) => {
                             sudoku.insert_number(row, col, number);
                             redraw = true;
                         }
@@ -74,7 +67,7 @@ pub fn run() -> Result<(), anyhow::Error> {
         // render
         if redraw {
             if let Err(e) = interface::render_window(&mut game_context, &sudoku, &selection) {
-                dbg!("{}", e);
+                eprintln!("{}", e);
             }
             redraw = false;
         }
@@ -83,5 +76,16 @@ pub fn run() -> Result<(), anyhow::Error> {
     }
 
     Ok(())
+}
+
+fn move_selection(selection: Option<(usize, usize)>, direction: Direction) -> Option<(usize, usize)> {
+    selection.map({ |(row, col)| 
+        match direction {
+            Direction::Up => (row, col.saturating_sub(1)),
+            Direction::Down => (row, (col + 1).min(8)),
+            Direction::Left => (row.saturating_sub(1), col),
+            Direction::Right => ((row + 1).min(8), col)
+        }
+    })
 }
 
