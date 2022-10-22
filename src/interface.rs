@@ -60,8 +60,8 @@ pub fn check_input(event_pump: &mut sdl2::EventPump, width: usize, length: usize
             }
             Event::MouseButtonDown {mouse_btn: MouseButton::Left, x, y, .. } => {
                 return Some(Action::Select { 
-                    row: x as usize * 9 / width,
-                    col: y as usize * 9 / length
+                    row: y as usize * 9 / width,
+                    col: x as usize * 9 / length
                 })
             }
             Event::KeyDown { keycode: Some(Keycode::Delete), .. } => {
@@ -197,10 +197,10 @@ fn render_selection_rectangle(
     color: &Color
 ) -> Result<(), anyhow::Error> {
     if let Some((row, col)) = selection {
-        let x_1 = (*row as i16) * width / 9;
-        let x_2 = (*row as i16 + 1) * width / 9;
-        let y_1 = (*col as i16) * height / 9;
-        let y_2 = (*col as i16 + 1) * height / 9;
+        let x_1 = (*col as i16) * width / 9;
+        let x_2 = (*col as i16 + 1) * width / 9;
+        let y_1 = (*row as i16) * height / 9;
+        let y_2 = (*row as i16 + 1) * height / 9;
         
         sdl.canvas.thick_line(x_1, y_1, x_2, y_1, 6, *color).map_err(|e| anyhow!(e))?;
         sdl.canvas.thick_line(x_1, y_2, x_2, y_2, 6, *color).map_err(|e| anyhow!(e))?;
@@ -224,9 +224,9 @@ fn render_numbers(
         (height / 9 - 10).try_into()?
     ).map_err(|e| anyhow!(e))?;
 
-    for (i, j, number) in sudoku.iterate() {
-        let pos_x = i as i32 * width as i32 / 9 + width as i32 / 18;
-        let pos_y = j as i32 * height as i32 / 9 + height as i32 / 18;
+    for (row, col, number) in sudoku.iterate() {
+        let pos_x = col as i32 * width as i32 / 9 + width as i32 / 18;
+        let pos_y = row as i32 * height as i32 / 9 + height as i32 / 18;
         match number {
             Number::Answer(val) => {
                 print_number(

@@ -150,5 +150,24 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn iterate() -> Result<(), anyhow::Error> {
+        let mut sudoku = Sudoku::new(2);
+
+        sudoku.insert_number(0, 1, 5);
+        sudoku.insert_number(1, 0, 9);
+
+        for (i, j, number) in sudoku.iterate() {
+            assert_eq!(number, &sudoku.rows[i][j]);
+        }
+
+        let mut iter = sudoku.iterate();
+        assert_eq!(iter.next(), Some((0, 0, &Number::Empty)));
+        assert_eq!(iter.next(), Some((0, 1, &Number::Answer(5))));
+        assert_eq!(iter.next(), Some((1, 0, &Number::Answer(9))));
+        
+        Ok(())
+    }
 }
 

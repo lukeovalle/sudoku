@@ -14,6 +14,7 @@ pub fn run() -> Result<(), anyhow::Error> {
 
     let time_per_frame = Duration::new(1, 0) / 60;
 
+    // (row, col)
     let mut selection: Option<(usize, usize)> = None;
 
     let mut redraw = true;
@@ -78,8 +79,11 @@ pub fn run() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn move_selection(selection: Option<(usize, usize)>, direction: Direction) -> Option<(usize, usize)> {
-    selection.map({ |(row, col)| 
+fn move_selection(
+    selection: Option<(usize, usize)>,
+    direction: Direction
+) -> Option<(usize, usize)> {
+    selection.map({ |(row, col)|
         match direction {
             Direction::Up => (row, col.saturating_sub(1)),
             Direction::Down => (row, (col + 1).min(8)),
