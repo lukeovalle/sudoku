@@ -21,7 +21,9 @@ pub enum Action {
     MoveSelection { dir: Direction },
     Insert { number: u8 },
     Delete,
-    Redraw
+    Redraw,
+    Solve,
+    Check
 }
 
 #[derive(Clone, Copy)]
@@ -66,6 +68,12 @@ pub fn check_input(event_pump: &mut sdl2::EventPump, width: usize, length: usize
             }
             Event::KeyDown { keycode: Some(Keycode::Delete), .. } => {
                 return Some(Action::Delete)
+            }
+            Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                return Some(Action::Solve)
+            }
+            Event::KeyDown { keycode: Some(Keycode::C), .. } => {
+                return Some(Action::Check)
             }
             Event::KeyDown { keycode: Some(key), .. } => {
                 return check_input_numbers(&key)
@@ -133,7 +141,8 @@ fn check_input_window_event(event: &WindowEvent) -> Option<Action> {
 pub fn render_window(
     sdl: &mut SdlContext,
     sudoku: &Sudoku,
-    selection: &Option<(usize, usize)>
+    selection: &Option<(usize, usize)>,
+    errors: &Vec<(usize, usize)>
 ) -> Result<(), anyhow::Error> {
     sdl.canvas.set_draw_color(Color::RGB(0, 0, 0));
     sdl.canvas.clear();
@@ -142,14 +151,16 @@ pub fn render_window(
     let height = sdl.canvas.window().drawable_size().1.try_into()?;
     let white = Color::WHITE;
     let grey = Color::GREY;
+    let red = Color::RGB(100, 0, 0);
+
+    // squares with invalid numbers
+    render_error_squares(sdl, errors, width, height, &red)?;
 
     // render grid
     render_grid(sdl, width, height, &white)?;
 
     // render numbers
     render_numbers(sdl, sudoku, width, height, &white, &grey)?;
-    {
-   }
 
     // selection rectangle
     let color = Color::RGB(30, 30, 220);
@@ -184,6 +195,25 @@ fn render_grid(
             if i % 3 == 0 { 6 } else { 2 },
             *color
         ).map_err(|e| anyhow!(e))?;
+    }
+
+    Ok(())
+}
+
+fn render_error_squares(
+    sdl: &mut SdlContext,
+    errors: &Vec<(usize, usize)>,
+    width: i16,
+    height: i16,
+    color: &Color
+) -> Result<(), anyhow::Error> {
+    for (row, col) in errors {
+        let x_1 = (*col as i16) * width / 9;
+        let x_2 = (*col as i16 + 1) * width / 9;
+        let y_1 = (*row as i16) * height / 9;
+        let y_2 = (*row as i16 + 1) * height / 9;
+
+        sdl.canvas.box_(x_1, y_1, x_2, y_2, *color).map_err(|e| anyhow!(e))?;
     }
 
     Ok(())

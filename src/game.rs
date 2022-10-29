@@ -9,22 +9,23 @@ pub fn run() -> Result<(), anyhow::Error> {
 //    sdl2::hint::set("SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR", "0");
 
     let mut game_context = interface::initialize_sdl()?;
-
     let mut sudoku = Sudoku::from_file(std::path::Path::new("tests/example"))?;
-
     let time_per_frame = Duration::new(1, 0) / 60;
-
     // (row, col)
     let mut selection: Option<(usize, usize)> = None;
-
     let mut redraw = true;
+    let mut errors = Vec::new();
 
     'game: loop {
         let now = Instant::now();
 
         // process input
         let (x, y) = game_context.canvas.window().drawable_size();
-        match interface::check_input(&mut game_context.event_pump, x.try_into()?, y.try_into()?) {
+        match interface::check_input(
+            &mut game_context.event_pump,
+            x.try_into()?,
+            y.try_into()?
+        ) {
             Some(Action::Quit) => {
                 break 'game;
             }
@@ -45,7 +46,7 @@ pub fn run() -> Result<(), anyhow::Error> {
                 if let Some((row, col)) = selection {
                     // if it's not a given number
                     match sudoku.check_position(row, col) {
-                        Some(Number::Empty | Number::Answer(_)) => {
+                        Number::Empty | Number::Answer(_) => {
                             sudoku.insert_number(row, col, number);
                             redraw = true;
                         }
@@ -59,6 +60,17 @@ pub fn run() -> Result<(), anyhow::Error> {
                     redraw = true;
                 }
             }
+            Some(Action::Solve) => {
+                if let Some(sol) = sudoku.solve() {
+                    sudoku = sol;
+                    redraw = true;
+                }
+            }
+            Some(Action::Check) => {
+                errors = sudoku.check_rules();
+                dbg!(errors.clone());
+                redraw = true;
+            }
             None => {}
         }
 
@@ -67,7 +79,12 @@ pub fn run() -> Result<(), anyhow::Error> {
 
         // render
         if redraw {
-            if let Err(e) = interface::render_window(&mut game_context, &sudoku, &selection) {
+            if let Err(e) = interface::render_window(
+                &mut game_context,
+                &sudoku,
+                &selection,
+                &errors
+            ) {
                 eprintln!("{}", e);
             }
             redraw = false;
@@ -85,10 +102,10 @@ fn move_selection(
 ) -> Option<(usize, usize)> {
     selection.map({ |(row, col)|
         match direction {
-            Direction::Up => (row, col.saturating_sub(1)),
-            Direction::Down => (row, (col + 1).min(8)),
-            Direction::Left => (row.saturating_sub(1), col),
-            Direction::Right => ((row + 1).min(8), col)
+            Direction::Up => (row.saturating_sub(1), col),
+            Direction::Down => ((row + 1).min(8), col),
+            Direction::Left => (row, col.saturating_sub(1)),
+            Direction::Right => (row, (col + 1).min(8))
         }
     })
 }

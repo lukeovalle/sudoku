@@ -11,13 +11,32 @@ pub enum Error {
     MismatchedGrid { rows: usize, cols: usize }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Number {
     Empty,
     Given(u8),
     Answer(u8)
 }
 
+impl Number {
+    // Compares two Numbers values and return true if they are equal and false
+    // if they aren't, or one of them is empty
+    pub fn compare(self, other: Number) -> bool {
+        match self {
+            Number::Empty => false,
+            Number::Given(a) | Number::Answer(a) => {
+                match other {
+                    Number::Empty => false,
+                    Number::Given(b) | Number::Answer(b) => {
+                        a == b
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Sudoku {
     rows: Vec<Vec<Number>>
 }
@@ -54,6 +73,10 @@ impl Sudoku {
         Ok(Sudoku { rows } )
     }
 
+    pub fn size(&self) -> usize {
+        self.rows.len()
+    }
+
     pub fn insert_number(&mut self, row: usize, col: usize, answer: u8) {
         if let Some(val) = self.rows[row].get_mut(col) {
             match val {
@@ -72,8 +95,12 @@ impl Sudoku {
         }
     }
 
-    pub fn check_position(&self, row: usize, col: usize) -> Option<&Number> {
-        self.rows.get(row).map(|c| c.get(col)).flatten()
+    pub fn check_position(&self, row: usize, col: usize) -> Number {
+        self.rows.get(row)
+            .map(|c| c.get(col))
+            .flatten()
+            .map(|val| *val)
+            .unwrap_or(Number::Empty)
     }
 
     pub fn iterate(&self) -> SudokuIter {
