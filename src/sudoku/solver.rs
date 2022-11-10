@@ -1,30 +1,40 @@
+use std::collections::hash_set::HashSet;
+
 use crate::sudoku::*;
 
 impl Sudoku {
     pub fn solve(&self) -> Option<Sudoku> {
         let mut solutions = Vec::new();
-
         let now = std::time::Instant::now();
-        self.recursive_solve(0, 0, &mut solutions);
-        let elapsed = now.elapsed();
-        println!("resuelto en {}.{}s", elapsed.as_secs(), elapsed.subsec_millis());
 
-        if let Some(solution) = solutions.first() {
-            Some(solution.clone())
-        } else {
-            None
-        }
+        self.recursive_solve(0, 0, &mut solutions);
+
+        let elapsed = now.elapsed();
+        println!("solved in {}.{:03}s.",
+            elapsed.as_secs(),
+            elapsed.subsec_millis()
+        );
+
+        solutions.first().map( |sol| sol.clone() )
     }
 
-    fn recursive_solve(&self, row: usize, col: usize, solutions: &mut Vec<Sudoku>) {
+    fn recursive_solve(
+        &self,
+        row: usize,
+        col: usize,
+        solutions: &mut Vec<Sudoku>
+    ) {
         let size = self.size() as u8;
 
-        match self.check_position(row, col) {
+        let mut aux = self.clone();
+        aux.solve_by_naked_singles();
+
+        match aux.check_position(row, col) {
             Number::Answer(_) | Number::Given(_) => {
-                self.next_recursion(row, col, solutions);
+                aux.next_recursion(row, col, solutions);
             }
             Number::Empty => {
-                let mut aux = self.clone();
+                aux.solve_by_naked_singles();
                 for i in 1..=size {
                     aux.insert_number(row, col, i);
 
@@ -58,59 +68,161 @@ impl Sudoku {
         }
     }
 
-    pub fn check_rules(&self) -> Vec<(usize, usize)> {
-        let mut wrong_numbers = Vec::new();
+    pub fn check_rules(&self) -> HashSet<(usize, usize)> {
+        let mut wrong_numbers = HashSet::new();
         let size = self.size();
 
-        // Check rows
         for i in 0..size {
             for j in 0..size {
-                for k in (j+1)..size {
-                    let pos = self.check_position(i, j);
-
-                    if pos.compare(self.check_position(i, k)) {
-                        wrong_numbers.push((i, j));
-                        wrong_numbers.push((i, k));
-                    }
-                }
+                self.check_row(i, j, &mut wrong_numbers);
+                self.check_column(i, j, &mut wrong_numbers);
+                self.check_box(i, j, &mut wrong_numbers);
             }
         }
-
-        // Check columns
-        for i in 0..size {
-            for j in 0..size {
-                for k in (i+1)..size {
-                    let pos = self.check_position(i, j);
-
-                    if pos.compare(self.check_position(k, j)) {
-                        wrong_numbers.push((i, j));
-                        wrong_numbers.push((k, j));
-                    }
-
-                }
-            }
-        }
-        
-        // Check boxes
-        for i in 0..size {
-            for j in 0..size {
-                // loop inside the box
-                for a in (i / 3 * 3)..(i / 3 * 3 + 3) {
-                    for b in (j / 3 * 3)..(j / 3 * 3 + 3) {
-                        if i == a && j == b { continue }
-
-                        let pos = self.check_position(i, j);
-
-                        if pos.compare(self.check_position(a, b)) {
-                            wrong_numbers.push((i, j));
-                            wrong_numbers.push((a, b));
-                        }
-                    }
-                }
-            }
-        }
-
 
         wrong_numbers
+    }
+
+    fn check_row(
+        &self,
+        row: usize,
+        col: usize,
+        wrong_numbers: &mut HashSet<(usize, usize)>
+    ) {
+        let pos = self.check_position(row, col);
+
+        for i in 0..self.size() {
+            if col == i {
+                continue;
+            }
+
+            if pos.compare(self.check_position(row, i)) {
+                wrong_numbers.insert((row, col));
+                wrong_numbers.insert((row, i));
+            }
+        }
+    }
+
+    fn check_column(
+        &self,
+        row: usize,
+        col: usize,
+        wrong_numbers: &mut HashSet<(usize, usize)>
+    ) {
+        let pos = self.check_position(row, col);
+
+        for i in 0..self.size() {
+            if row == i {
+                continue;
+            }
+
+            if pos.compare(self.check_position(i, col)) {
+                wrong_numbers.insert((row, col));
+                wrong_numbers.insert((i, col));
+            }
+        }
+    }
+
+    fn check_box(
+        &self,
+        row: usize,
+        col: usize,
+        wrong_numbers: &mut HashSet<(usize, usize)>
+    ) {
+        let pos = self.check_position(row, col);
+
+        for i in (row / 3 * 3)..(row / 3 * 3 + 3) {
+            for j in (col / 3 * 3)..(col / 3 * 3 + 3) {
+                if row == i && col == j {
+                    continue;
+                }
+
+                if pos.compare(self.check_position(i, j)) {
+                    wrong_numbers.insert((row, col));
+                    wrong_numbers.insert((i, j));
+                }
+            }
+        }
+    }
+
+    fn solve_by_naked_singles(&mut self) {
+        let total_numbers = HashSet::from_iter(1..=(self.size() as u8));
+        let const_row: Vec<_> = (0..self.size()).map(|i| self.constraints_row(i)).collect();
+        let const_col: Vec<_> = (0..self.size()).map(|i| self.constraints_col(i)).collect();
+        let const_box: Vec<_> = (0..self.size()).map(|i| self.constraints_box(i)).collect();
+
+        let size = self.size();
+        let mut stop = false;
+
+        while stop == false {
+            stop = true;
+            for i in 0..size {
+                for j in 0..size {
+                    if self.check_position(i, j) != Number::Empty {
+                        continue;
+                    }
+
+                    let possible = &total_numbers - &const_row[i];
+                    let possible = &possible - &const_col[j];
+                    let possible = &possible - &const_box[self.box_number(i, j)];
+
+                    if possible.len() != 1 {
+                        continue;
+                    }
+
+                    for number in possible.iter() {
+                        self.insert_number(i, j, *number);
+                        stop = false; // Only stop if there is nothing to insert
+                    }
+                }
+            }
+        }
+    }
+
+    fn constraints_row(&self, row: usize) -> HashSet<u8> {
+        let mut constraints = HashSet::with_capacity(self.size());
+
+        for i in 0..self.size() {
+            match self.check_position(row, i) {
+                Number::Empty => continue,
+                Number::Answer(n) | Number::Given(n) => {
+                    constraints.insert(n);
+                }
+            }
+        }
+
+        constraints
+    }
+
+    fn constraints_col(&self, col: usize) -> HashSet<u8> {
+        let mut constraints = HashSet::with_capacity(self.size());
+
+        for i in 0..self.size() {
+            match self.check_position(i, col) {
+                Number::Empty => continue,
+                Number::Answer(n) | Number::Given(n) => {
+                    constraints.insert(n);
+                }
+            }
+        }
+
+        constraints
+    }
+
+    fn constraints_box(&self, box_: usize) -> HashSet<u8> {
+        let mut constraints = HashSet::with_capacity(self.size());
+
+        for i in (box_ / 3 * 3)..(box_ / 3 * 3 + 3) { // rows
+            for j in (box_ % 3 * 3)..(box_ % 3 * 3 + 3) { // columns
+                match self.check_position(i, j) {
+                    Number::Empty => continue,
+                    Number::Answer(n) | Number::Given(n) => {
+                        constraints.insert(n);
+                    }
+                }
+            }
+        }
+
+        constraints
     }
 }

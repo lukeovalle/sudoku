@@ -106,6 +106,14 @@ impl Sudoku {
     pub fn iterate(&self) -> SudokuIter {
         SudokuIter::new(&self.rows)
     }
+
+    pub fn box_number(&self, row: usize, col: usize) -> usize {
+        // boxes are in this order, it should start in 1 but idk
+        // 0 1 2
+        // 3 4 5
+        // 6 7 8
+        row / 3 * 3 + col / 3
+    }
 }
 
 pub struct SudokuIter<'a> {

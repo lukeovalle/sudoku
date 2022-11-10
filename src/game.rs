@@ -1,5 +1,6 @@
 //use thiserror::Error;
 use std::time::{Duration, Instant};
+use std::collections::hash_set::HashSet;
 use crate::interface;
 use crate::sudoku;
 use interface::{Action, Direction};
@@ -14,7 +15,7 @@ pub fn run() -> Result<(), anyhow::Error> {
     // (row, col)
     let mut selection: Option<(usize, usize)> = None;
     let mut redraw = true;
-    let mut errors = Vec::new();
+    let mut errors = HashSet::new();
 
     'game: loop {
         let now = Instant::now();
@@ -68,7 +69,6 @@ pub fn run() -> Result<(), anyhow::Error> {
             }
             Some(Action::Check) => {
                 errors = sudoku.check_rules();
-                dbg!(errors.clone());
                 redraw = true;
             }
             None => {}

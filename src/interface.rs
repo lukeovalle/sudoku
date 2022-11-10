@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_set::HashSet};
 use crate::sudoku::{Number, Sudoku};
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels::Color;
@@ -142,7 +142,7 @@ pub fn render_window(
     sdl: &mut SdlContext,
     sudoku: &Sudoku,
     selection: &Option<(usize, usize)>,
-    errors: &Vec<(usize, usize)>
+    errors: &HashSet<(usize, usize)>
 ) -> Result<(), anyhow::Error> {
     sdl.canvas.set_draw_color(Color::RGB(0, 0, 0));
     sdl.canvas.clear();
@@ -202,7 +202,7 @@ fn render_grid(
 
 fn render_error_squares(
     sdl: &mut SdlContext,
-    errors: &Vec<(usize, usize)>,
+    errors: &HashSet<(usize, usize)>,
     width: i16,
     height: i16,
     color: &Color
