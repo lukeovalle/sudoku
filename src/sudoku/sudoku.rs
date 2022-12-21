@@ -77,6 +77,18 @@ impl Sudoku {
         self.rows.len()
     }
 
+    pub fn insert_given(&mut self, row: usize, col: usize, number: u8) {
+        if let Some(val) = self.rows[row].get_mut(col) {
+            *val = Number::Given(number);
+        }
+    }
+
+    pub fn delete_position(&mut self, row: usize, col: usize) {
+        if let Some(val) = self.rows[row].get_mut(col) {
+            *val = Number::Empty;
+        }
+    }
+
     pub fn insert_number(&mut self, row: usize, col: usize, answer: u8) {
         if let Some(val) = self.rows[row].get_mut(col) {
             match val {

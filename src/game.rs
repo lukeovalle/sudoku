@@ -71,6 +71,10 @@ pub fn run() -> Result<(), anyhow::Error> {
                 errors = sudoku.check_rules();
                 redraw = true;
             }
+            Some(Action::Generate) => {
+                sudoku = Sudoku::generate(9);
+                redraw = true;
+            }
             None => {}
         }
 

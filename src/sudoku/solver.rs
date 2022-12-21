@@ -147,9 +147,9 @@ impl Sudoku {
 
     fn solve_by_naked_singles(&mut self) {
         let total_numbers = HashSet::from_iter(1..=(self.size() as u8));
-        let const_row: Vec<_> = (0..self.size()).map(|i| self.constraints_row(i)).collect();
-        let const_col: Vec<_> = (0..self.size()).map(|i| self.constraints_col(i)).collect();
-        let const_box: Vec<_> = (0..self.size()).map(|i| self.constraints_box(i)).collect();
+        let mut const_row: Vec<_> = (0..self.size()).map(|i| self.constraints_row(i)).collect();
+        let mut const_col: Vec<_> = (0..self.size()).map(|i| self.constraints_col(i)).collect();
+        let mut const_box: Vec<_> = (0..self.size()).map(|i| self.constraints_box(i)).collect();
 
         let size = self.size();
         let mut stop = false;
@@ -162,9 +162,11 @@ impl Sudoku {
                         continue;
                     }
 
+                    let box_number = self.box_number(i, j);
+
                     let possible = &total_numbers - &const_row[i];
                     let possible = &possible - &const_col[j];
-                    let possible = &possible - &const_box[self.box_number(i, j)];
+                    let possible = &possible - &const_box[box_number];
 
                     if possible.len() != 1 {
                         continue;
@@ -172,6 +174,9 @@ impl Sudoku {
 
                     for number in possible.iter() {
                         self.insert_number(i, j, *number);
+                        const_row[i] = self.constraints_row(i);
+                        const_col[j] = self.constraints_col(j);
+                        const_box[box_number] = self.constraints_box(box_number);
                         stop = false; // Only stop if there is nothing to insert
                     }
                 }

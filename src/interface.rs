@@ -23,7 +23,8 @@ pub enum Action {
     Delete,
     Redraw,
     Solve,
-    Check
+    Check,
+    Generate
 }
 
 #[derive(Clone, Copy)]
@@ -74,6 +75,9 @@ pub fn check_input(event_pump: &mut sdl2::EventPump, width: usize, length: usize
             }
             Event::KeyDown { keycode: Some(Keycode::C), .. } => {
                 return Some(Action::Check)
+            }
+            Event::KeyDown { keycode: Some(Keycode::G), .. } => {
+                return Some(Action::Generate)
             }
             Event::KeyDown { keycode: Some(key), .. } => {
                 return check_input_numbers(&key)
